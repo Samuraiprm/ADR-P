@@ -1,0 +1,6 @@
+ingestion/main
+*.exe
+*.test
+*.out
+vendor/
+.env
