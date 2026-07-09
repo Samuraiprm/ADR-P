@@ -8,14 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project structure
-- Go Ingestion Service (Stage 1)
-- Healthcheck endpoint
-- Prometheus metrics
-- Redis Stream integration
+- Python Detection Engine (Stage 2)
+- Redis consumer with consumer group
+- Rule Engine with rate limiting
+- ML Detector with Isolation Forest
+- PostgreSQL models and schema
+- FastAPI health endpoint
 
 ### Changed
-- (none yet)
+- Updated docker-compose.yml with PostgreSQL and detection service
 
 ### Fixed
 - (none yet)

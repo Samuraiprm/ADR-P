@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: adr
+      POSTGRES_USER: adr
+      POSTGRES_PASSWORD: adr
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./detection/init.sql:/docker-entrypoint-initdb.d/init.sql
+
   redis:
     image: redis:7-alpine
     ports:
@@ -18,5 +30,22 @@ services:
     depends_on:
       - redis
 
+  detection:
+    build: ./detection
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=adr
+      - DB_USER=adr
+      - DB_PASSWORD=adr
+    depends_on:
+      - redis
+      - postgres
+
 volumes:
+  pg_data:
   redis_data:
