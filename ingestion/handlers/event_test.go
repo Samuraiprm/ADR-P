@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/adr-p/ingestion/handlers"
 	"github.com/adr-p/ingestion/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,12 @@ import (
 func setupTestRedis(t *testing.T) *redis.Client {
 	t.Helper()
 	os.Setenv("REDIS_ADDR", "localhost:6379")
-	return redis.NewClient()
+	
+	rdb := redis.NewClient()
+	if !rdb.IsConnected(context.Background()) {
+		t.Skip("Redis not available, skipping integration test")
+	}
+	return rdb
 }
 
 func TestHandleEvent_ValidSignature(t *testing.T) {
@@ -26,9 +31,9 @@ func TestHandleEvent_ValidSignature(t *testing.T) {
 	redisClient := setupTestRedis(t)
 	defer redisClient.Close()
 
-	router.POST("/api/v1/events", handlers.HandleEvent(redisClient))
+	router.POST("/api/v1/events", HandleEvent(redisClient))
 
-	event := handlers.Event{
+	event := Event{
 		Source:    "telegram",
 		EventType: "message",
 		Timestamp: 1234567890,
@@ -52,9 +57,9 @@ func TestHandleEvent_InvalidSignature(t *testing.T) {
 	defer redisClient.Close()
 
 	os.Setenv("WEBHOOK_SECRET", "test-secret")
-	router.POST("/api/v1/events", handlers.HandleEvent(redisClient))
+	router.POST("/api/v1/events", HandleEvent(redisClient))
 
-	event := handlers.Event{
+	event := Event{
 		Source:    "telegram",
 		EventType: "message",
 		Timestamp: 1234567890,
