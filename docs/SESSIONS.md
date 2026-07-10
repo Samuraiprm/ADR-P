@@ -46,5 +46,18 @@
 - detection/init.sql - Database schema
 - detection/Dockerfile - Container build
 
+### Files created (Stage 3):
+- response/main.go - Go entry point
+- response/services/verdict.go - Verdict consumer
+- response/services/response.go - Response actions
+- response/handlers/api.go - REST API handlers
+- response/redis/client.go - Redis client
+- response/db/queries.go - Database queries
+- response/middleware/logger.go - Request logging
+- response/Dockerfile - Container build
+- grafana/dashboard.json - Dashboard config
+- grafana/datasource.yml - Datasource config
+- prometheus/prometheus.yml - Prometheus config
+
 ### Resume from:
-- Stage 3: Response Service and Dashboard
+- Stage 4: Testing, documentation, and polish

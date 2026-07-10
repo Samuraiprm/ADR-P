@@ -8,15 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Python Detection Engine (Stage 2)
-- Redis consumer with consumer group
-- Rule Engine with rate limiting
-- ML Detector with Isolation Forest
-- PostgreSQL models and schema
-- FastAPI health endpoint
+- Go Response Service (Stage 3)
+- Verdict consumer from Redis Stream
+- Telegram callback handler
+- Rules and Stats API endpoints
+- Grafana dashboard with 5 panels
+- Prometheus configuration
+- Docker Compose orchestration
 
 ### Changed
-- Updated docker-compose.yml with PostgreSQL and detection service
+- Added response, prometheus, grafana services
 
 ### Fixed
 - (none yet)
