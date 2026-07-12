@@ -68,10 +68,18 @@ func (c *Client) Ping(ctx context.Context) error {
 }
 
 func (c *Client) XReadGroup(ctx context.Context, group, consumer string, streams map[string]string, count int64, block time.Duration) ([]redis.XStream, error) {
+	streamKeys := make([]string, 0, len(streams)*2)
+	streamIDs := make([]string, 0, len(streams))
+	for k, v := range streams {
+		streamKeys = append(streamKeys, k)
+		streamIDs = append(streamIDs, v)
+	}
+	streamArgs := append(streamKeys, streamIDs...)
+
 	return c.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
 		Group:    group,
 		Consumer: consumer,
-		Streams:  streams,
+		Streams:  streamArgs,
 		Count:    count,
 		Block:    block,
 	}).Result()
@@ -79,6 +87,10 @@ func (c *Client) XReadGroup(ctx context.Context, group, consumer string, streams
 
 func (c *Client) XAck(ctx context.Context, stream, group string, ids ...string) error {
 	return c.rdb.XAck(ctx, stream, group, ids...).Err()
+}
+
+func (c *Client) XGroupCreate(ctx context.Context, stream, group, startID string) error {
+	return c.rdb.XGroupCreateMkStream(ctx, stream, group, startID).Err()
 }
 
 func (c *Client) Close() error {

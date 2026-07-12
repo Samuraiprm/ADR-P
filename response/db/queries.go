@@ -6,12 +6,11 @@ import (
 )
 
 type Rule struct {
-	ID             int       `json:"id"`
-	Name           string    `json:"name"`
-	ConditionJSON  []byte    `json:"condition_json"`
-	Action         string    `json:"action"`
-	IsActive       bool      `json:"is_active"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID            int       `json:"id"`
+	Name          string    `json:"name"`
+	ConditionJSON []byte    `json:"condition_json"`
+	Action        string    `json:"action"`
+	IsActive      bool      `json:"is_active"`
 }
 
 type Stats struct {
@@ -23,7 +22,7 @@ type Stats struct {
 }
 
 func GetRules(db *sql.DB) ([]Rule, error) {
-	rows, err := db.Query("SELECT id, name, condition_json, action, is_active, created_at FROM detection_rules ORDER BY id")
+	rows, err := db.Query("SELECT id, name, condition_json, action, is_active FROM detection_rules ORDER BY id")
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +31,7 @@ func GetRules(db *sql.DB) ([]Rule, error) {
 	var rules []Rule
 	for rows.Next() {
 		var r Rule
-		if err := rows.Scan(&r.ID, &r.Name, &r.ConditionJSON, &r.Action, &r.IsActive, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.ConditionJSON, &r.Action, &r.IsActive); err != nil {
 			return nil, err
 		}
 		rules = append(rules, r)
@@ -51,13 +50,13 @@ func CreateRule(db *sql.DB, name string, conditionJSON []byte, action string) er
 func GetStats(db *sql.DB, from, to time.Time) (*Stats, error) {
 	stats := &Stats{}
 	err := db.QueryRow(`
-		SELECT 
+		SELECT
 			COUNT(*) as total,
 			COALESCE(SUM(CASE WHEN verdict = 'BLOCK' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN verdict = 'WARN' THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN verdict = 'PASS' THEN 1 ELSE 0 END), 0),
 			COALESCE(AVG(score), 0)
-		FROM events 
+		FROM events
 		WHERE timestamp BETWEEN $1 AND $2
 	`, from, to).Scan(&stats.TotalEvents, &stats.BlockedCount, &stats.WarnCount, &stats.PassCount, &stats.AvgScore)
 	return stats, err

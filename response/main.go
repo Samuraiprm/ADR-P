@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/adr-p/response/db"
 	"github.com/adr-p/response/handlers"
 	"github.com/adr-p/response/middleware"
 	"github.com/adr-p/response/redis"
@@ -21,7 +20,6 @@ import (
 )
 
 func main() {
-	// Initialize PostgreSQL
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "postgres://adr:adr@localhost:5432/adr?sslmode=disable"
@@ -37,21 +35,18 @@ func main() {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
 
-	// Initialize Redis
 	redisClient := redis.NewClient(
 		redis.WithAddr(os.Getenv("REDIS_ADDR")),
 	)
+	defer redisClient.Close()
 
-	// Initialize services
 	verdictService := services.NewVerdictService(redisClient, psqlDB)
 	responseService := services.NewResponseService(psqlDB)
 
-	// Initialize router
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.Logger())
 
-	// Health check
 	router.GET("/healthz", func(c *gin.Context) {
 		if err := psqlDB.Ping(); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy"})
@@ -60,10 +55,8 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	// Metrics
-	router.GET("/metrics", gin.WrapH(prometheus.Handler()))
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	// API endpoints
 	v1 := router.Group("/api/v1")
 	{
 		v1.GET("/rules", handlers.GetRules(psqlDB))
@@ -72,16 +65,13 @@ func main() {
 		v1.POST("/telegram/callback", handlers.TelegramCallback(psqlDB))
 	}
 
-	// Start verdict consumer
 	go verdictService.StartConsuming(context.Background(), responseService)
 
-	// Create server
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
 	}
 
-	// Graceful shutdown
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)

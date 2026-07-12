@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"log"
 	"time"
 
@@ -17,9 +16,9 @@ const (
 )
 
 type VerdictService struct {
-	redis    *redis.Client
-	db       *sql.DB
-	running  bool
+	redis   *redis.Client
+	db      *sql.DB
+	running bool
 }
 
 func NewVerdictService(redis *redis.Client, db *sql.DB) *VerdictService {
@@ -32,11 +31,7 @@ func NewVerdictService(redis *redis.Client, db *sql.DB) *VerdictService {
 func (s *VerdictService) StartConsuming(ctx context.Context, responseService *ResponseService) {
 	s.running = true
 
-	// Create consumer group
-	err := s.redis.XReadGroup(ctx, GROUP_NAME, CONSUMER_NAME, map[string]string{VERDICT_STREAM: "0"}, 1, time.Second)
-	if err != nil {
-		log.Printf("Consumer group may already exist: %v", err)
-	}
+	s.redis.XGroupCreate(ctx, VERDICT_STREAM, GROUP_NAME, "0")
 
 	for s.running {
 		select {
@@ -44,12 +39,15 @@ func (s *VerdictService) StartConsuming(ctx context.Context, responseService *Re
 			return
 		default:
 			s.processMessages(ctx, responseService)
+			if s.running {
+				time.Sleep(100 * time.Millisecond)
+			}
 		}
 	}
 }
 
 func (s *VerdictService) processMessages(ctx context.Context, responseService *ResponseService) {
-	streams, err := s.redis.XReadGroup(ctx, GROUP_NAME, CONSUMER_NAME, map[string]string{VERDICT_STREAM: ">"}, 10, time.Second)
+	streams, err := s.redis.XReadGroup(ctx, GROUP_NAME, CONSUMER_NAME, map[string]string{VERDICT_STREAM: ">"}, 10, 5*time.Second)
 	if err != nil {
 		return
 	}
@@ -66,6 +64,11 @@ func (s *VerdictService) handleVerdict(ctx context.Context, values map[string]in
 	eventID, _ := values["event_id"].(string)
 	verdict, _ := values["verdict"].(string)
 	score, _ := values["score"].(string)
+
+	if eventID == "" || verdict == "" {
+		log.Printf("Skipping verdict with missing fields: event_id=%q verdict=%q", eventID, verdict)
+		return
+	}
 
 	log.Printf("Processing verdict: event=%s verdict=%s score=%s", eventID, verdict, score)
 

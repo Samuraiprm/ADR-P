@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/adr-p/response/db"
@@ -83,21 +84,25 @@ func TelegramCallback(database *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Parse callback data: "confirm:event_id" or "reject:event_id"
 		data := request.CallbackQuery.Data
-		if len(data) < 8 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid callback data"})
+		parts := strings.SplitN(data, ":", 2)
+		if len(parts) != 2 || parts[1] == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid callback data, expected 'action:event_id'"})
 			return
 		}
 
-		action := data[:7]
-		eventID := data[8:]
+		action := parts[0]
+		eventID := parts[1]
 
 		var verdict string
-		if action == "confirm" {
+		switch action {
+		case "confirm":
 			verdict = "CONFIRMED"
-		} else {
+		case "reject":
 			verdict = "REJECTED"
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown action, expected 'confirm' or 'reject'"})
+			return
 		}
 
 		err := db.UpdateEventVerdict(database, eventID, verdict)
@@ -106,6 +111,6 @@ func TelegramCallback(database *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "action applied"})
+		c.JSON(http.StatusOK, gin.H{"message": "action applied", "verdict": verdict, "event_id": eventID})
 	}
 }
