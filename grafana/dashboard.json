@@ -22,7 +22,7 @@
   "links": [],
   "panels": [
     {
-      "title": "Real-time Metrics",
+      "title": "Ingestion",
       "type": "row",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
     },
@@ -53,6 +53,48 @@
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 }
     },
     {
+      "title": "HTTP Requests",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "rate(adr_http_requests_total[5m])",
+          "legendFormat": "{{method}} {{status}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 }
+    },
+    {
+      "title": "HTTP Latency",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(adr_http_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(adr_http_duration_seconds_bucket[5m]))",
+          "legendFormat": "p50",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 }
+    },
+    {
+      "title": "Detection",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+    },
+    {
       "title": "Verdict Distribution",
       "type": "piechart",
       "datasource": {
@@ -61,44 +103,22 @@
       },
       "targets": [
         {
-          "expr": "adr_events_total{verdict=\"BLOCK\"}",
+          "expr": "adr_events_processed_total{verdict=\"BLOCK\"}",
           "legendFormat": "BLOCK",
           "refId": "A"
         },
         {
-          "expr": "adr_events_total{verdict=\"WARN\"}",
+          "expr": "adr_events_processed_total{verdict=\"WARN\"}",
           "legendFormat": "WARN",
           "refId": "B"
         },
         {
-          "expr": "adr_events_total{verdict=\"PASS\"}",
+          "expr": "adr_events_processed_total{verdict=\"PASS\"}",
           "legendFormat": "PASS",
           "refId": "C"
         }
       ],
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 }
-    },
-    {
-      "title": "Top Users",
-      "type": "table",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "targets": [
-        {
-          "expr": "topk(10, sum by (user_id) (adr_events_total))",
-          "legendFormat": "{{user_id}}",
-          "refId": "A",
-          "instant": true
-        }
-      ],
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 }
-    },
-    {
-      "title": "Rules & ML",
-      "type": "row",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 }
     },
     {
       "title": "Rule Efficiency",
@@ -115,11 +135,11 @@
           "instant": true
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 }
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 }
     },
     {
-      "title": "ML Anomaly Score Distribution",
-      "type": "histogram",
+      "title": "ML Anomaly Score",
+      "type": "heatmap",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -128,10 +148,66 @@
         {
           "expr": "adr_anomaly_score_bucket",
           "legendFormat": "{{le}}",
-          "refId": "A"
+          "refId": "A",
+          "format": "heatmap"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 }
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 }
+    },
+    {
+      "title": "Processing",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "title": "Events Consumed vs Failed",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "rate(adr_events_consumed_total[5m])",
+          "legendFormat": "Consumed",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(adr_events_failed_total[5m])",
+          "legendFormat": "Failed",
+          "refId": "B"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 }
+    },
+    {
+      "title": "Service Health",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "targets": [
+        {
+          "expr": "adr_redis_connected",
+          "legendFormat": "Redis",
+          "refId": "A",
+          "instant": true
+        },
+        {
+          "expr": "adr_db_connected",
+          "legendFormat": "PostgreSQL",
+          "refId": "B",
+          "instant": true
+        },
+        {
+          "expr": "adr_ml_model_trained",
+          "legendFormat": "ML Model",
+          "refId": "C",
+          "instant": true
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 }
     }
   ],
   "refresh": "5s",

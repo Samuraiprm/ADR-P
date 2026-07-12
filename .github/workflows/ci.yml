@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  lint-ingestion:
+    name: Lint Ingestion (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ingestion
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Download dependencies
+        run: go mod download
+      - name: Vet
+        run: go vet ./...
+      - name: Build
+        run: go build -o /dev/null .
+
+  test-ingestion:
+    name: Test Ingestion (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ingestion
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Download dependencies
+        run: go mod download
+      - name: Test
+        run: go test -v -race -count=1 ./...
+
+  lint-response:
+    name: Lint Response (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: response
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Download dependencies
+        run: go mod download
+      - name: Vet
+        run: go vet ./...
+      - name: Build
+        run: go build -o /dev/null .
+
+  lint-detection:
+    name: Lint Detection (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: detection
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Syntax check
+        run: python -m py_compile main.py && python -m py_compile consumer.py && python -m py_compile config.py
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [lint-ingestion, lint-response, lint-detection]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Ingestion
+        run: docker build -t adr-p-ingestion ./ingestion
+      - name: Build Detection
+        run: docker build -t adr-p-detection ./detection
+      - name: Build Response
+        run: docker build -t adr-p-response ./response
+      - name: Build Nginx
+        run: docker build -t adr-p-nginx ./nginx

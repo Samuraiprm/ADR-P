@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +21,7 @@ func Logger() gin.HandlerFunc {
 
 		gin.DefaultWriter.Write([]byte(
 			"[RESPONSE] " + time.Now().Format("2006-01-02 15:04:05") + " | " +
-				string(rune(status)) + " | " +
+				strconv.Itoa(status) + " | " +
 				latency.String() + " | " +
 				method + " " + path + query + "\n",
 		))

@@ -7,6 +7,10 @@ from db.session import SessionLocal
 from db.models import Event
 from engine.rules import RuleEngine
 from engine.ml import MLDetector
+from metrics import (
+    EVENTS_CONSUMED, EVENTS_PROCESSED, EVENTS_FAILED,
+    RULE_MATCHES, ML_SCORE, ML_TRAINED, ML_SAMPLES,
+)
 import structlog
 
 logger = structlog.get_logger()
@@ -57,7 +61,16 @@ class DetectionConsumer:
 
             for stream, messages in results:
                 for msg_id, data in messages:
-                    self._handle_event(db, msg_id, data)
+                    EVENTS_CONSUMED.inc()
+                    try:
+                        self._handle_event(db, msg_id, data)
+                    except Exception as e:
+                        EVENTS_FAILED.inc()
+                        logger.error("event_handle_error", msg_id=msg_id, error=str(e))
+                        try:
+                            self.redis.xack(STREAM_NAME, GROUP_NAME, msg_id)
+                        except Exception:
+                            pass
 
     def _handle_event(self, db, msg_id: str, data: dict):
         event = {
@@ -90,13 +103,17 @@ class DetectionConsumer:
 
         self.redis.xack(STREAM_NAME, GROUP_NAME, msg_id)
 
+        EVENTS_PROCESSED.labels(verdict=verdict["action"]).inc()
+        ML_SCORE.observe(verdict["score"])
+
         logger.info("event_processed",
                      event_id=event["id"],
                      verdict=verdict["action"])
 
     def _detect(self, event: dict) -> dict:
-        rule_action = self.rule_engine.evaluate(event)
+        rule_action, rule_name = self.rule_engine.evaluate(event)
         if rule_action:
+            RULE_MATCHES.labels(rule_name=rule_name or "unknown", action=rule_action).inc()
             return {"action": rule_action, "score": 1.0}
 
         ml_score = self.ml_detector.predict(event)
@@ -104,6 +121,28 @@ class DetectionConsumer:
             return {"action": "WARN", "score": ml_score}
 
         return {"action": "PASS", "score": ml_score}
+
+    def retrain_ml(self):
+        try:
+            from db.session import SessionLocal as SL
+            from db.models import Event as Ev
+            from config import settings
+
+            with SL() as db:
+                rows = db.query(Ev).order_by(Ev.timestamp.desc()).limit(settings.ML_WINDOW_SIZE).all()
+                events = [
+                    {
+                        "user_id": r.user_id,
+                        "event_type": r.event_type,
+                        "payload": {},
+                    }
+                    for r in rows
+                ]
+                self.ml_detector.train(events)
+                ML_TRAINED.set(1 if self.ml_detector.is_trained else 0)
+                ML_SAMPLES.set(len(events))
+        except Exception as e:
+            logger.error("retrain_error", error=str(e))
 
     def stop(self):
         self.running = False

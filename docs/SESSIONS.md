@@ -14,50 +14,47 @@
 - Created Docker Compose setup
 - Created basic unit tests
 
-### Current state:
-- Go Ingestion Service is complete and building successfully
-- Ready to move to Stage 2 (Python Detection Engine)
-
-### Key decisions:
-- Using Go 1.22+ with Gin framework
-- Redis Stream for event queue
-- HMAC-SHA256 for webhook authentication
-- Prometheus for metrics collection
-
 ### Files created (Stage 1):
-- ingestion/main.go - Main entry point
-- ingestion/handlers/event.go - Webhook handler
-- ingestion/handlers/health.go - Health check
-- ingestion/redis/client.go - Redis client
-- ingestion/metrics/prometheus.go - Prometheus metrics
-- ingestion/middleware/logger.go - Request logging
-- ingestion/middleware/metrics.go - Metrics middleware
-- ingestion/Dockerfile - Container build
-- docker-compose.yml - Service orchestration
+- ingestion/main.go, handlers/event.go, handlers/health.go, redis/client.go
+- ingestion/metrics/prometheus.go, middleware/logger.go, middleware/metrics.go
+- ingestion/Dockerfile, docker-compose.yml
 
 ### Files created (Stage 2):
-- detection/main.py - FastAPI entry point
-- detection/consumer.py - Redis Stream consumer
-- detection/engine/rules.py - Rule Engine
-- detection/engine/ml.py - ML Detector
-- detection/db/models.py - SQLAlchemy models
-- detection/db/session.py - DB session
-- detection/config.py - Configuration
-- detection/init.sql - Database schema
-- detection/Dockerfile - Container build
+- detection/main.py, consumer.py, config.py, init.sql, Dockerfile
+- detection/engine/rules.py, engine/ml.py
+- detection/db/models.py, db/session.py, redis/client.py
 
 ### Files created (Stage 3):
-- response/main.go - Go entry point
-- response/services/verdict.go - Verdict consumer
-- response/services/response.go - Response actions
-- response/handlers/api.go - REST API handlers
-- response/redis/client.go - Redis client
-- response/db/queries.go - Database queries
-- response/middleware/logger.go - Request logging
-- response/Dockerfile - Container build
-- grafana/dashboard.json - Dashboard config
-- grafana/datasource.yml - Datasource config
-- prometheus/prometheus.yml - Prometheus config
+- response/main.go, services/verdict.go, services/response.go
+- response/handlers/api.go, redis/client.go, db/queries.go
+- response/middleware/logger.go, Dockerfile
+- grafana/dashboard.json, grafana/datasource.yml, prometheus/prometheus.yml
 
-### Resume from:
-- Stage 4: Testing, documentation, and polish
+## Session 2 - Docs + Missing Infrastructure
+**Date:** 2026-07-12
+
+### What was accomplished:
+- Converted all docs from RTF to proper Markdown
+- Full audit of architecture vs code (found 15 critical bugs + 11 missing features)
+
+### Missing features implemented:
+- **Nginx reverse proxy** (nginx/nginx.conf, nginx/Dockerfile)
+- **GitHub Actions CI/CD** (.github/workflows/ci.yml)
+- **Detection Prometheus metrics** (detection/metrics/__init__.py)
+- **Detection /metrics endpoint** (detection/main.py)
+- **ML retraining loop** (detection/consumer.py retrain_ml + retrain_loop in main.py)
+- **Detection health checks** with Redis/PG status gauges
+- **Prometheus scrape target for detection** (prometheus/prometheus.yml)
+- **Dashboard rewritten** with real metrics from all 3 services
+- **Seed detection rules** (init.sql: rate_limit, burst_detection, spam_keywords)
+- **response/go.sum** generated via go mod tidy
+- **Redis close on shutdown** in ingestion service
+
+### Bugs fixed:
+- detection/db/session.py: asyncpg driver → sync postgresql:// with env vars
+- detection/requirements.txt: removed catboost/pandas, added psycopg2-binary/pydantic-settings/numpy
+- Added __init__.py to detection packages
+- middleware/logger.go (both services): Unicode rune status → strconv.Itoa
+- docker-compose.yml: added nginx, switched services to expose (internal only)
+- detection/consumer.py: per-message error handling + metrics
+- detection/engine/rules.py: evaluate() now returns (action, rule_name) tuple

@@ -69,5 +69,6 @@ func main() {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
+	redisClient.Close()
 	log.Println("Server exiting")
 }

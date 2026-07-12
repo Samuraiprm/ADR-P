@@ -21,3 +21,9 @@ CREATE TABLE IF NOT EXISTS detection_rules (
 CREATE INDEX idx_events_user_id ON events(user_id);
 CREATE INDEX idx_events_timestamp ON events(timestamp);
 CREATE INDEX idx_events_verdict ON events(verdict);
+
+INSERT INTO detection_rules (name, condition_json, action, is_active) VALUES
+('rate_limit', '{"window_sec": 60, "threshold": 10}', 'BLOCK', true),
+('burst_detection', '{"window_sec": 10, "threshold": 5}', 'WARN', true),
+('spam_keywords', '{"keywords": ["spam", "scam", "free money"], "match_count": 1}', 'BLOCK', true)
+ON CONFLICT DO NOTHING;

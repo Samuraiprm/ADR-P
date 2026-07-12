@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Tuple, Optional
 from db.models import DetectionRule
 from redis.client import get_redis
 import json
@@ -14,11 +14,11 @@ class RuleEngine:
             DetectionRule.is_active == True
         ).all()
 
-    def evaluate(self, event: dict) -> str | None:
+    def evaluate(self, event: dict) -> Tuple[Optional[str], Optional[str]]:
         for rule in self.rules:
             if self._matches_rule(event, rule):
-                return rule.action
-        return None
+                return rule.action, rule.name
+        return None, None
 
     def _matches_rule(self, event: dict, rule: DetectionRule) -> bool:
         condition = rule.condition_json

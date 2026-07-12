@@ -11,6 +11,10 @@ scrape_configs:
     static_configs:
       - targets: ['ingestion:8080']
 
+  - job_name: 'detection'
+    static_configs:
+      - targets: ['detection:8001']
+
   - job_name: 'response'
     static_configs:
       - targets: ['response:8080']
