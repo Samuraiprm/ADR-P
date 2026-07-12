@@ -2,6 +2,8 @@ import numpy as np
 from sklearn.ensemble import IsolationForest
 from typing import List, Optional
 import structlog
+import re
+from datetime import datetime
 
 logger = structlog.get_logger()
 
@@ -24,7 +26,7 @@ class MLDetector:
             n_estimators=100,
             contamination=0.1,
             random_state=42,
-            n_jobs=-1,
+            n_jobs=1,
         )
         self.model.fit(features)
         self.is_trained = True
@@ -60,12 +62,35 @@ class MLDetector:
     def _extract_single(self, event: dict) -> Optional[np.ndarray]:
         try:
             payload = event.get("payload", {})
+            text = payload.get("text", payload.get("message", payload.get("content", "")))
+            if not text:
+                text = str(payload)
+
+            hour = 0
+            ts = event.get("timestamp")
+            if isinstance(ts, (int, float)):
+                hour = datetime.fromtimestamp(ts).hour
+            elif isinstance(ts, str):
+                try:
+                    hour = datetime.fromisoformat(ts.replace("Z", "+00:00")).hour
+                except Exception:
+                    hour = 0
+
+            source_map = {"telegram": 0, "vk": 1, "discord": 2, "web": 3}
+            source_val = source_map.get(event.get("source", ""), 4)
+
+            type_map = {"message": 0, "comment": 1, "post": 2, "reply": 3}
+            type_val = type_map.get(event.get("event_type", ""), 4)
+
             return np.array([
-                float(payload.get("message_length", 0)),
-                float(payload.get("word_count", 0)),
-                float(payload.get("url_count", 0)),
-                float(payload.get("caps_ratio", 0)),
-                float(payload.get("hour_of_day", 0)),
+                float(len(text)),
+                float(len(text.split())),
+                float(len(re.findall(r'https?://\S+', text))),
+                float(sum(1 for c in text if c.isupper()) / max(len(text), 1)),
+                float(hour),
+                float(source_val),
+                float(type_val),
+                float(len(set(text.lower().split()))),
             ])
         except (ValueError, TypeError):
             return None

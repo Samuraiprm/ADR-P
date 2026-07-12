@@ -38,6 +38,7 @@ func main() {
 
 	// API endpoints
 	v1 := router.Group("/api/v1")
+	v1.Use(middleware.APIKeyAuth())
 	{
 		v1.POST("/events", handlers.HandleEvent(redisClient))
 	}

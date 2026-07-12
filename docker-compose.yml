@@ -27,6 +27,7 @@ services:
     environment:
       - REDIS_ADDR=redis:6379
       - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
+      - API_KEY=${API_KEY:-}
     depends_on:
       - redis
 
@@ -55,6 +56,7 @@ services:
       - DATABASE_URL=postgres://adr:adr@postgres:5432/adr?sslmode=disable
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - API_KEY=${API_KEY:-}
     depends_on:
       - redis
       - postgres
