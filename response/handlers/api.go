@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/adr-p/response/db"
+	"github.com/adr-p/response/metrics"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,6 +41,7 @@ func CreateRule(database *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		metrics.RulesCreated.Inc()
 		c.JSON(http.StatusCreated, gin.H{"message": "rule created"})
 	}
 }
@@ -111,6 +113,7 @@ func TelegramCallback(database *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		metrics.TelegramCallbacksHandled.Inc()
 		c.JSON(http.StatusOK, gin.H{"message": "action applied", "verdict": verdict, "event_id": eventID})
 	}
 }

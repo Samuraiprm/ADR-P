@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/adr-p/response/db"
+	"github.com/adr-p/response/metrics"
 )
 
 type ResponseService struct {
@@ -36,7 +37,7 @@ func NewResponseService(db *sql.DB) *ResponseService {
 func (s *ResponseService) BlockUser(ctx context.Context, eventID string) {
 	log.Printf("BLOCK action for event %s", eventID)
 
-	err := db.UpdateEventVerdict(s.db, eventID, "BLOCKED")
+	err := db.UpdateEventVerdict(s.db, eventID, "BLOCK")
 	if err != nil {
 		log.Printf("Failed to update verdict: %v", err)
 		return
@@ -53,7 +54,7 @@ func (s *ResponseService) BlockUser(ctx context.Context, eventID string) {
 func (s *ResponseService) SendWarning(ctx context.Context, eventID string, score string) {
 	log.Printf("WARN action for event %s (score: %s)", eventID, score)
 
-	err := db.UpdateEventVerdict(s.db, eventID, "WARNED")
+	err := db.UpdateEventVerdict(s.db, eventID, "WARN")
 	if err != nil {
 		log.Printf("Failed to update verdict: %v", err)
 		return
@@ -93,6 +94,7 @@ func (s *ResponseService) sendTelegramMessage(text string) {
 		"text":    text,
 	}
 	s.postTelegram("sendMessage", payload)
+	metrics.TelegramMessagesSent.Inc()
 }
 
 func (s *ResponseService) sendTelegramMessageWithKeyboard(text string, keyboard map[string]interface{}) {
@@ -106,6 +108,7 @@ func (s *ResponseService) sendTelegramMessageWithKeyboard(text string, keyboard 
 		"reply_markup": keyboard,
 	}
 	s.postTelegram("sendMessage", payload)
+	metrics.TelegramMessagesSent.Inc()
 }
 
 func (s *ResponseService) postTelegram(method string, payload map[string]interface{}) {

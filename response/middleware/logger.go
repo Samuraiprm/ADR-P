@@ -19,7 +19,7 @@ func Logger() gin.HandlerFunc {
 		status := c.Writer.Status()
 		method := c.Request.Method
 
-		gin.DefaultWriter.Write([]byte(
+		_, _ = gin.DefaultWriter.Write([]byte(
 			"[RESPONSE] " + time.Now().Format("2006-01-02 15:04:05") + " | " +
 				strconv.Itoa(status) + " | " +
 				latency.String() + " | " +

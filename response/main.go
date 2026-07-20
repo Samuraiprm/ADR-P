@@ -63,6 +63,7 @@ func main() {
 		v1.GET("/rules", handlers.GetRules(psqlDB))
 		v1.POST("/rules", handlers.CreateRule(psqlDB))
 		v1.GET("/stats", handlers.GetStats(psqlDB))
+		v1.POST("/telegram/callback", handlers.TelegramCallback(psqlDB))
 	}
 
 	go verdictService.StartConsuming(context.Background(), responseService)

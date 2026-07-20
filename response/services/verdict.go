@@ -6,7 +6,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/adr-p/response/metrics"
 	"github.com/adr-p/response/redis"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -31,7 +33,7 @@ func NewVerdictService(redis *redis.Client, db *sql.DB) *VerdictService {
 func (s *VerdictService) StartConsuming(ctx context.Context, responseService *ResponseService) {
 	s.running = true
 
-	s.redis.XGroupCreate(ctx, VERDICT_STREAM, GROUP_NAME, "0")
+	_ = s.redis.XGroupCreate(ctx, VERDICT_STREAM, GROUP_NAME, "0")
 
 	for s.running {
 		select {
@@ -54,8 +56,9 @@ func (s *VerdictService) processMessages(ctx context.Context, responseService *R
 
 	for _, stream := range streams {
 		for _, msg := range stream.Messages {
+			metrics.VerdictsConsumed.Inc()
 			s.handleVerdict(ctx, msg.Values, responseService)
-			s.redis.XAck(ctx, VERDICT_STREAM, GROUP_NAME, msg.ID)
+			_ = s.redis.XAck(ctx, VERDICT_STREAM, GROUP_NAME, msg.ID)
 		}
 	}
 }
@@ -67,6 +70,7 @@ func (s *VerdictService) handleVerdict(ctx context.Context, values map[string]in
 
 	if eventID == "" || verdict == "" {
 		log.Printf("Skipping verdict with missing fields: event_id=%q verdict=%q", eventID, verdict)
+		metrics.VerdictsFailed.Inc()
 		return
 	}
 
@@ -75,8 +79,10 @@ func (s *VerdictService) handleVerdict(ctx context.Context, values map[string]in
 	switch verdict {
 	case "BLOCK":
 		responseService.BlockUser(ctx, eventID)
+		metrics.VerdictsProcessed.With(prometheus.Labels{"action": "BLOCK"}).Inc()
 	case "WARN":
 		responseService.SendWarning(ctx, eventID, score)
+		metrics.VerdictsProcessed.With(prometheus.Labels{"action": "WARN"}).Inc()
 	}
 }
 
