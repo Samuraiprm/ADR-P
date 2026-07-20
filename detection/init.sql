@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS events (
     timestamp TIMESTAMPTZ NOT NULL,
     verdict TEXT,
     score FLOAT,
-    matched_rule_id INT
+    matched_rule_id INT,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS detection_rules (

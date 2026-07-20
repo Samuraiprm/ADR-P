@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/adr-p/response/handlers"
+	"github.com/adr-p/response/metrics"
 	"github.com/adr-p/response/middleware"
 	"github.com/adr-p/response/redis"
 	"github.com/adr-p/response/services"
@@ -49,9 +50,18 @@ func main() {
 
 	router.GET("/healthz", func(c *gin.Context) {
 		if err := psqlDB.Ping(); err != nil {
+			metrics.PostgresHealth.Set(0)
 			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy"})
 			return
 		}
+		metrics.PostgresHealth.Set(1)
+
+		if err := redisClient.Ping(c.Request.Context()); err != nil {
+			metrics.RedisHealth.Set(0)
+		} else {
+			metrics.RedisHealth.Set(1)
+		}
+
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 

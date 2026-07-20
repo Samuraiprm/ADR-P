@@ -15,6 +15,7 @@ class Event(Base):
     verdict = Column(String)
     score = Column(Float)
     matched_rule_id = Column(Integer)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
 
 class DetectionRule(Base):

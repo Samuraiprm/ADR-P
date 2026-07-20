@@ -3,6 +3,9 @@ package db
 import (
 	"database/sql"
 	"time"
+
+	"github.com/adr-p/response/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Rule struct {
@@ -24,6 +27,7 @@ type Stats struct {
 func GetRules(db *sql.DB) ([]Rule, error) {
 	rows, err := db.Query("SELECT id, name, condition_json, action, is_active FROM detection_rules ORDER BY id")
 	if err != nil {
+		metrics.DBOperations.With(prometheus.Labels{"operation": "get_rules", "status": "error"}).Inc()
 		return nil, err
 	}
 	defer rows.Close()
@@ -32,10 +36,12 @@ func GetRules(db *sql.DB) ([]Rule, error) {
 	for rows.Next() {
 		var r Rule
 		if err := rows.Scan(&r.ID, &r.Name, &r.ConditionJSON, &r.Action, &r.IsActive); err != nil {
+			metrics.DBOperations.With(prometheus.Labels{"operation": "get_rules", "status": "error"}).Inc()
 			return nil, err
 		}
 		rules = append(rules, r)
 	}
+	metrics.DBOperations.With(prometheus.Labels{"operation": "get_rules", "status": "success"}).Inc()
 	return rules, nil
 }
 
@@ -44,6 +50,11 @@ func CreateRule(db *sql.DB, name string, conditionJSON []byte, action string) er
 		"INSERT INTO detection_rules (name, condition_json, action, is_active) VALUES ($1, $2, $3, true)",
 		name, conditionJSON, action,
 	)
+	if err != nil {
+		metrics.DBOperations.With(prometheus.Labels{"operation": "create_rule", "status": "error"}).Inc()
+	} else {
+		metrics.DBOperations.With(prometheus.Labels{"operation": "create_rule", "status": "success"}).Inc()
+	}
 	return err
 }
 
@@ -59,10 +70,20 @@ func GetStats(db *sql.DB, from, to time.Time) (*Stats, error) {
 		FROM events
 		WHERE timestamp BETWEEN $1 AND $2
 	`, from, to).Scan(&stats.TotalEvents, &stats.BlockedCount, &stats.WarnCount, &stats.PassCount, &stats.AvgScore)
+	if err != nil {
+		metrics.DBOperations.With(prometheus.Labels{"operation": "get_stats", "status": "error"}).Inc()
+	} else {
+		metrics.DBOperations.With(prometheus.Labels{"operation": "get_stats", "status": "success"}).Inc()
+	}
 	return stats, err
 }
 
 func UpdateEventVerdict(db *sql.DB, eventID string, verdict string) error {
-	_, err := db.Exec("UPDATE events SET verdict = $1 WHERE id = $2", verdict, eventID)
+	_, err := db.Exec("UPDATE events SET verdict = $1, updated_at = NOW() WHERE id = $2", verdict, eventID)
+	if err != nil {
+		metrics.DBOperations.With(prometheus.Labels{"operation": "update_verdict", "status": "error"}).Inc()
+	} else {
+		metrics.DBOperations.With(prometheus.Labels{"operation": "update_verdict", "status": "success"}).Inc()
+	}
 	return err
 }
